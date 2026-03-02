@@ -1,5 +1,6 @@
 // read_screen.dart
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -13,7 +14,6 @@ String _sentenceToString(BookSentence sentence) {
 }
 
 /// 去除字符串开头的空白字符（包括中文全角空格 \u3000）
-// 👇 新增：预编译正则 + 辅助函数
 final _leadingWhitespaceRegex = RegExp(r'^[\s\u3000]+');
 
 String _trimLeadingWhitespace(String text) {
@@ -35,6 +35,9 @@ class _ReadScreenState extends State<ReadScreen> {
   StreamSubscription<BookProgress>? _progressSubscription;
   int _lastLoggedChapter = -1;
 
+  // 👇 新增：存储真实章节标题
+  List<String> _chapterTitles = [];
+
   // ignore: constant_identifier_names
   static const String _TAG = '_ReadScreenState';
 
@@ -52,6 +55,23 @@ class _ReadScreenState extends State<ReadScreen> {
   Future<void> _loadBook() async {
     try {
       final data = await rootBundle.load(widget.bookAssetPath);
+      final content = utf8.decode(data.buffer.asUint8List());
+
+      // 👇 提取所有章节标题
+      final titleRegex = RegExp(
+        r'^\s*(第[零一二三四五六七八九十百\d]+[章节卷节部篇].*|引子|序章|楔子|尾声|Epilogue|Prologue.*)',
+        multiLine: true,
+        caseSensitive: false,
+      );
+      _chapterTitles = titleRegex.allMatches(content).map((m) {
+        return m.group(0)!.trim();
+      }).toList();
+
+      // 如果没找到标题，至少保证长度匹配（避免越界）
+      if (_chapterTitles.isEmpty) {
+        _chapterTitles = ['第一章'];
+      }
+
       final bookTitle = widget.bookAssetPath.split('/').last.replaceAll('.txt', '');
       final source = ByteDataSource(data, bookTitle, isSplit: true);
 
@@ -74,38 +94,27 @@ class _ReadScreenState extends State<ReadScreen> {
 
   void _logChapterSwitch(int chapterIndex) {
     try {
-      final sentences = bookController.getSentenceFromIndex(chapterIndex);
-      String title = '第${chapterIndex + 1}章';
+      // 👇 直接使用预提取的标题
+      String title = chapterIndex < _chapterTitles.length
+          ? _chapterTitles[chapterIndex]
+          : '第${chapterIndex + 1}章';
+
       String preview = '';
-
+      final sentences = bookController.getSentenceFromIndex(chapterIndex);
       if (sentences != null && sentences.isNotEmpty) {
-        final firstSentenceText = _sentenceToString(sentences[0]);
-
-        // 启发式：如果第一句很短且包含章节关键词，视为标题
-        if (firstSentenceText.length <= 30 &&
-            RegExp(r'(第.*[章卷节]|引子|序章|尾声|Epilogue|Prologue)',
-                caseSensitive: false).hasMatch(firstSentenceText)) {
-          title = firstSentenceText.trim();
-          // 预览用第二句（如果存在）
-          if (sentences.length > 1) {
-            final secondText = _trimLeadingWhitespace(_sentenceToString(sentences[1]));
-            preview = secondText.substring(0, math.min(secondText.length, 20));
-          } else {
-            // 回退到第一句（清理后）
-            final cleanedFirst = _trimLeadingWhitespace(firstSentenceText);
-            preview = cleanedFirst.substring(0, math.min(cleanedFirst.length, 20));
+        // 找第一个非空句子作为预览
+        for (var s in sentences) {
+          String text = _trimLeadingWhitespace(_sentenceToString(s));
+          if (text.isNotEmpty) {
+            preview = text.substring(0, math.min(text.length, 20));
+            break;
           }
-        } else {
-          // 第一句不是标题，则整章无显式标题
-          final cleanedFirst = _trimLeadingWhitespace(firstSentenceText);
-          preview = cleanedFirst.substring(0, math.min(cleanedFirst.length, 20));
         }
       }
 
       final time = DateTime.now().toIso8601String();
       final sep = '-' * 120;
       log.i(sep, tag: _TAG);
-      // 并使用清理后的 preview
       log.i('Time: $time | Title: $title | Preview: "$preview..."', tag: _TAG);
       log.i(sep, tag: _TAG);
     } catch (e) {

@@ -4,12 +4,12 @@ plugins {
 }
 
 android {
-    namespace = "com.ysbing.flutter_read_example"
+    namespace = "com.chatty.flutter_read_example"
     compileSdk flutter.compileSdkVersion
     ndkVersion flutter.ndkVersion
 
     defaultConfig {
-        applicationId "com.ysbing.flutter_read_example"
+        applicationId "com.chatty.flutter_read_example"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

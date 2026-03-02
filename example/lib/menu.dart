@@ -192,13 +192,13 @@ class _BookMenuState extends State<BookMenu> {
 
   Widget _buildDirectory() {
     final currentChapterIndex = _getCurrentChapterIndex();
-    const double itemHeight = 60.0; // 固定每行高度
-    final scrollController = ScrollController();
+    const double itemHeight = 60.0;
 
+    // 延迟滚动到当前章节（使用 PrimaryScrollController）
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (scrollController.hasClients) {
-        // 滚动到当前章节顶部（使其成为第一行）
-        scrollController.animateTo(
+      final primaryController = PrimaryScrollController.maybeOf(context);
+      if (primaryController?.hasClients ?? false) {
+        primaryController!.animateTo(
           currentChapterIndex * itemHeight,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
@@ -231,36 +231,42 @@ class _BookMenuState extends State<BookMenu> {
             color: Colors.amberAccent,
           ),
           Expanded(
-            child: ListView.builder(
-              controller: scrollController,
-              itemCount: widget.bookController.getChapterNum(),
-              // ✅ 关键：只保留水平 padding，避免垂直干扰滚动
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              // ✅ 关键：固定每项高度
-              itemExtent: itemHeight,
-              itemBuilder: (context, index) {
-                BookSource? source = widget.bookController.getSourceFromIndex(index);
-                final isSelected = index == currentChapterIndex;
+            child: Scrollbar(
+              interactive: true,           // ✅ 支持拖拽跳转
+              thumbVisibility: true,       // 始终显示
+              thickness: 8.0,              // 更易操作
+              radius: const Radius.circular(4.0),
+              child: ListView.builder(
+                primary: true,             // ✅ 关键：使用 PrimaryScrollController
+                itemCount: widget.bookController.getChapterNum(),
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                itemExtent: itemHeight,
+                physics: const ClampingScrollPhysics(),
+                itemBuilder: (context, index) {
+                  BookSource? source = widget.bookController.getSourceFromIndex(index);
+                  final isSelected = index == currentChapterIndex;
 
-                return ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                  title: Text(source?.getTitle() ?? ""),
-                  selected: isSelected,
-                  selectedColor: Colors.blue,
-                  tileColor: isSelected ? Colors.blue[50] : null,
-                  onTap: () {
-                    _closeDirectory();
-                    Future.delayed(Duration(milliseconds: _animDuration), () {
-                      // ignore: use_build_context_synchronously
-                      Navigator.pop(context);
-                      widget.bookController.startReadChapter(
-                        source!,
-                        ChapterData(chapterIndex: index),
-                      );
-                    });
-                  },
-                );
-              },
+                  return ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                    title: Text(source?.getTitle() ?? ""),
+                    selected: isSelected,
+                    selectedColor: Colors.blue,
+                    tileColor: isSelected ? Colors.blue[50] : null,
+                    onTap: () {
+                      _closeDirectory();
+                      Future.delayed(Duration(milliseconds: _animDuration), () {
+                        if (!mounted) return;
+                        // ignore: use_build_context_synchronously
+                        Navigator.pop(context);
+                        widget.bookController.startReadChapter(
+                          source!,
+                          ChapterData(chapterIndex: index),
+                        );
+                      });
+                    },
+                  );
+                },
+              ),
             ),
           ),
         ],

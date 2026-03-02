@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.ysbing.flutter_read_example">
+    package="com.chatty.flutter_read_example">
    <application
         android:label="flutter_read_example"
         android:name="${applicationName}"

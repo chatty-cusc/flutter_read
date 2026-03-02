@@ -1,4 +1,4 @@
-package com.ysbing.flutter_read_example;
+package com.chatty.flutter_read_example;
 
 import io.flutter.embedding.android.FlutterActivity;
 
