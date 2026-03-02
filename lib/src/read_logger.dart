@@ -10,37 +10,10 @@ class AppLogger {
     _init();
   }
 
-  late Logger _logger;
 
   void _init() {
     Logger.root.level = Level.ALL;
-    Logger.root.onRecord.listen((record) {
-      // Release 模式只输出 WARNING 及以上
-      if (!kDebugMode && record.level != Level.WARNING && record.level != Level.SEVERE) {
-        return;
-      }
-      _printLog(record);
-    });
-    _logger = Logger('FlutterRead');
-  }
-
-  void _printLog(LogRecord record) {
-    final time = _formatTime(record.time);
-    final levelTag = _getLevelTag(record.level);
-    final caller = _extractCallerInfo(record.stackTrace);
-    final message = '[$time] $levelTag $caller - ${record.message}';
-
-    debugPrint(message);
-
-    if (record.error != null) {
-      debugPrint('  💥 Error: ${record.error}');
-    }
-    if (record.stackTrace != null && kDebugMode) {
-      final stackLines = record.stackTrace.toString().split('\n').take(3);
-      for (final line in stackLines) {
-        debugPrint('  📜 $line');
-      }
-    }
+    // 不再监听 root，改由我们手动控制输出
   }
 
   String _formatTime(DateTime time) {
@@ -56,24 +29,57 @@ class AppLogger {
     return 'DEBUG';
   }
 
-  String _extractCallerInfo(StackTrace? stackTrace) {
-    if (stackTrace == null) return 'unknown';
+  String? _extractCallerInfo(StackTrace? stackTrace) {
+    if (stackTrace == null) return null;
     final lines = stackTrace.toString().split('\n');
-    for (int i = 2; i < lines.length && i < 6; i++) {
+    // 从第 0 行开始找业务代码（跳过 logging 内部调用）
+    for (int i = 0; i < lines.length && i < 8; i++) {
+      // 跳过包内部、框架、或未知行
+      if (lines[i].contains('package:logging/') ||
+          lines[i].contains('dart:async/') ||
+          lines[i].contains('<asynchronous suspension>') ||
+          !lines[i].contains('.dart:')) {
+        continue;
+      }
       final match = RegExp(r'([^\/\\]+\.dart):(\d+)').firstMatch(lines[i]);
       if (match != null) {
         return '${match.group(1)}:${match.group(2)}';
       }
     }
-    return 'unknown';
+    return null;
   }
 
-  // ====== Public API ======
-  void d(String msg) => _logger.fine(msg);
-  void i(String msg) => _logger.info(msg);
-  void w(String msg) => _logger.warning(msg);
-  void e(String msg, {Object? error, StackTrace? stackTrace}) {
-    _logger.severe(msg, error, stackTrace ?? StackTrace.current);
+  // ====== Public API（支持显式 tag，不伪造 StackTrace）======
+  void d(String msg, {String? tag}) => _logDirect(Level.FINE, msg, tag: tag);
+  void i(String msg, {String? tag}) => _logDirect(Level.INFO, msg, tag: tag);
+  void w(String msg, {String? tag}) => _logDirect(Level.WARNING, msg, tag: tag);
+  void e(String msg, {Object? error, String? tag}) => _logDirect(Level.SEVERE, msg, error: error, tag: tag);
+
+  void _logDirect(Level level, String message, {Object? error, String? tag}) {
+    // Release 模式只输出 WARNING 及以上
+    if (!kDebugMode && level != Level.WARNING && level != Level.SEVERE) {
+      return;
+    }
+
+    final time = _formatTime(DateTime.now());
+    final levelTag = _getLevelTag(level);
+    final caller = tag ?? _extractCallerInfo(StackTrace.current) ?? 'unknown';
+    final logLine = '[$time] $levelTag $caller - $message';
+
+    debugPrint(logLine);
+
+    if (error != null) {
+      debugPrint('  💥 Error: $error');
+      // 仅在有 error 且 debug 模式下打印堆栈
+      if (kDebugMode) {
+        final stackLines = StackTrace.current.toString().split('\n').take(3);
+        for (final line in stackLines) {
+          if (line.trim().isNotEmpty) {
+            debugPrint('  📜 $line');
+          }
+        }
+      }
+    }
   }
 }
 

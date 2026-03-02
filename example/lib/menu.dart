@@ -8,7 +8,7 @@ class BookMenu extends StatefulWidget {
   const BookMenu({super.key, required this.bookController});
 
   @override
-  State<StatefulWidget> createState() => _BookMenuState();
+  State<BookMenu> createState() => _BookMenuState();
 }
 
 class _BookMenuState extends State<BookMenu> {
@@ -44,6 +44,21 @@ class _BookMenuState extends State<BookMenu> {
     });
   }
 
+  // 🔍 根据 currentBookSource 的标题反查当前章节索引
+  int _getCurrentChapterIndex() {
+    final currentSource = widget.bookController.currentBookSource;
+    if (currentSource == null) return 0;
+
+    final total = widget.bookController.getChapterNum();
+    for (int i = 0; i < total; i++) {
+      final source = widget.bookController.getSourceFromIndex(i);
+      if (source?.getTitle() == currentSource.getTitle()) {
+        return i;
+      }
+    }
+    return 0; // 默认返回第一章
+  }
+
   @override
   Widget build(BuildContext context) {
     bool wrap = _wrapDirectoryHeight;
@@ -64,7 +79,7 @@ class _BookMenuState extends State<BookMenu> {
                 }
               },
               child: AnimatedOpacity(
-                opacity: _showDirectoryFlag ? 1 : 0,
+                opacity: _showDirectoryFlag || _showSettingFlag ? 1 : 0,
                 duration: Duration(milliseconds: _animDuration),
                 onEnd: () {
                   if (!_showDirectoryFlag) {
@@ -163,12 +178,11 @@ class _BookMenuState extends State<BookMenu> {
         child: Container(
           color: const Color.fromARGB(255, 206, 204, 204),
           alignment: Alignment.center,
-          // child: Text(text),
           child: Text(
             text,
             style: const TextStyle(
-              fontSize: 18,           // 字体大小
-              fontWeight: FontWeight.w600, // 稍微加粗，更醒目
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
@@ -177,16 +191,30 @@ class _BookMenuState extends State<BookMenu> {
   }
 
   Widget _buildDirectory() {
+    final currentChapterIndex = _getCurrentChapterIndex();
+    const double itemHeight = 60.0; // 固定每行高度
+    final scrollController = ScrollController();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (scrollController.hasClients) {
+        // 滚动到当前章节顶部（使其成为第一行）
+        scrollController.animateTo(
+          currentChapterIndex * itemHeight,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      }
+    });
+
     return Container(
       width: double.infinity,
       decoration: const BoxDecoration(
-        color: Color.fromARGB(255, 255, 255, 255),
+        color: Colors.white,
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(10),
           topRight: Radius.circular(10),
         ),
       ),
-      //padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 10),
       child: Column(
         children: [
           Padding(
@@ -204,20 +232,31 @@ class _BookMenuState extends State<BookMenu> {
           ),
           Expanded(
             child: ListView.builder(
+              controller: scrollController,
               itemCount: widget.bookController.getChapterNum(),
-              padding: const EdgeInsets.all(10),
+              // ✅ 关键：只保留水平 padding，避免垂直干扰滚动
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              // ✅ 关键：固定每项高度
+              itemExtent: itemHeight,
               itemBuilder: (context, index) {
-                BookSource? source =
-                    widget.bookController.getSourceFromIndex(index);
+                BookSource? source = widget.bookController.getSourceFromIndex(index);
+                final isSelected = index == currentChapterIndex;
+
                 return ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 8),
                   title: Text(source?.getTitle() ?? ""),
+                  selected: isSelected,
+                  selectedColor: Colors.blue,
+                  tileColor: isSelected ? Colors.blue[50] : null,
                   onTap: () {
                     _closeDirectory();
                     Future.delayed(Duration(milliseconds: _animDuration), () {
                       // ignore: use_build_context_synchronously
                       Navigator.pop(context);
                       widget.bookController.startReadChapter(
-                          source!, ChapterData(chapterIndex: index));
+                        source!,
+                        ChapterData(chapterIndex: index),
+                      );
                     });
                   },
                 );

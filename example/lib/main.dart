@@ -1,82 +1,22 @@
-import 'dart:async';
-
+// main.dart
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_read/flutter_read.dart';
-
-import 'menu.dart';
+import 'bookshelf_screen.dart'; // 新增导入
 
 void main() {
   runApp(const MyApp());
 }
 
-class MyApp extends StatefulWidget {
+class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
-  @override
-  State<MyApp> createState() => _MyAppState();
-}
-
-class _MyAppState extends State<MyApp> {
-  final ReadController bookController = ReadController.create(
-    loadingWidget: const Center(
-      child: CircularProgressIndicator(),
-    ),
-    enableVerticalDrag: true,
-    enableTapPage: true,
-  );
-  PersistentBottomSheetController? _menuController;
-
-  @override
-  void initState() {
-    start();
-    super.initState();
-  }
-
-  Future<void> start() async {
-    DateTime now = DateTime.now();
-    // 预加载，进行切割分章
-    BookSource source = ByteDataSource(
-        await rootBundle.load("assets/books/斗破苍穹.txt"),
-        "斗破苍穹",
-        isSplit: true);
-    int state = await bookController.startReadBook(source);
-    Duration duration = DateTime.now().difference(now);
-    debugPrint("wwww,loading time, $duration, $state");
-  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: Scaffold(
-        backgroundColor: const Color(0xFFE2E8DC),
-        body: SafeArea(
-          child: Builder(builder: (context) {
-            return ReadView(
-              readController: bookController,
-              onMenu: () {
-                if (_menuController == null) {
-                  _menuController = showBottomSheet(
-                    context: context,
-                    backgroundColor: Colors.transparent,
-                    enableDrag: false,
-                    builder: (context) => BookMenu(
-                      bookController: bookController,
-                    ),
-                  )..closed.then((value) {
-                      _menuController = null;
-                    });
-                } else {
-                  _menuController?.close();
-                }
-              },
-              onScroll: () {
-                _menuController?.close();
-              },
-            );
-          }),
-        ),
+      title: '小说阅读器',
+      theme: ThemeData(
+        scaffoldBackgroundColor: const Color(0xFFE2E8DC),
       ),
+      home: const BookshelfScreen(), // 默认进入书架
     );
   }
 }
