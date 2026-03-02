@@ -1,10 +1,10 @@
-Language: [English](https://github.com/ysbing/flutter_read/blob/main/README.md) | [中文简体](https://github.com/ysbing/flutter_read/blob/main/README_zh.md)
+Language: [English](https://github.com/chatty-cusc/flutter_read/blob/main/README.md) | [中文简体](https://github.com/chatty-cusc/flutter_read/blob/main/README_zh.md)
 
 # flutter_read
 
 Flutter Novel Reader is a multi-platform reading app offering smooth scrolling, diverse text styles, and personalized settings. It supports chapter evaluation and interaction features, easy installation and usage, real-time reading progress monitoring, and is released under the LGPLv3 license.
 
-![Demo](https://github.com/ysbing/flutter_read/raw/main/demo.webp)
+![Demo](https://github.com/chatty-cusc/flutter_read/raw/main/demo.gif)
 
 ## Features
 
@@ -54,8 +54,8 @@ Flutter Novel Reader is a multi-platform reading app offering smooth scrolling, 
 
 3. Open the novel:
    ```dart
-   final ByteData byteData = await rootBundle.load("assets/斗罗大陆.txt");
-   BookSource source = ByteDataSource(byteData, "《斗罗大陆》", isSplit: true);
+   final ByteData byteData = await rootBundle.load("assets/斗破苍穹.txt");
+   BookSource source = ByteDataSource(byteData, "《斗破苍穹》", isSplit: true);
    int state = await readController.startReadBook(source);
    ```
 
