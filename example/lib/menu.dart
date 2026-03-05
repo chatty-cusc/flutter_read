@@ -1,3 +1,4 @@
+// lib/menu.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_read/flutter_read.dart';
 import 'package:flutter_read_example/setting.dart';
@@ -17,6 +18,21 @@ class _BookMenuState extends State<BookMenu> {
   bool _wrapDirectoryHeight = true;
   bool _wrapSettingHeight = true;
   final int _animDuration = 250;
+
+  // 👇 新增：用于目录列表的 ScrollController
+  late ScrollController _directoryScrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _directoryScrollController = ScrollController(); // 初始化
+  }
+
+  @override
+  void dispose() {
+    _directoryScrollController.dispose(); // 释放资源
+    super.dispose();
+  }
 
   void _showDirectory() {
     setState(() {
@@ -56,7 +72,7 @@ class _BookMenuState extends State<BookMenu> {
         return i;
       }
     }
-    return 0; // 默认返回第一章
+    return 0;
   }
 
   @override
@@ -194,11 +210,10 @@ class _BookMenuState extends State<BookMenu> {
     final currentChapterIndex = _getCurrentChapterIndex();
     const double itemHeight = 60.0;
 
-    // 延迟滚动到当前章节（使用 PrimaryScrollController）
+    // 延迟滚动到当前章节
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final primaryController = PrimaryScrollController.maybeOf(context);
-      if (primaryController?.hasClients ?? false) {
-        primaryController!.animateTo(
+      if (_directoryScrollController.hasClients) {
+        _directoryScrollController.animateTo(
           currentChapterIndex * itemHeight,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
@@ -232,12 +247,14 @@ class _BookMenuState extends State<BookMenu> {
           ),
           Expanded(
             child: Scrollbar(
-              interactive: true,           // ✅ 支持拖拽跳转
-              thumbVisibility: true,       // 始终显示
-              thickness: 8.0,              // 更易操作
+              controller: _directoryScrollController, // ✅ 绑定 ScrollController
+              interactive: true,
+              thumbVisibility: true,
+              thickness: 8.0,
               radius: const Radius.circular(4.0),
               child: ListView.builder(
-                primary: true,             // ✅ 关键：使用 PrimaryScrollController
+                controller: _directoryScrollController, // ✅ 同一个控制器
+                primary: false, // 因为显式提供了 controller
                 itemCount: widget.bookController.getChapterNum(),
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 itemExtent: itemHeight,
