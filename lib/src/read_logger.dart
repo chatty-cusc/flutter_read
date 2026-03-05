@@ -10,10 +10,10 @@ class AppLogger {
     _init();
   }
 
-
   void _init() {
+    // 可选：初始化 logging 包（但本类不依赖它输出）
     Logger.root.level = Level.ALL;
-    // 不再监听 root，改由我们手动控制输出
+    // 注意：我们不添加任何监听器，避免干扰
   }
 
   String _formatTime(DateTime time) {
@@ -32,9 +32,7 @@ class AppLogger {
   String? _extractCallerInfo(StackTrace? stackTrace) {
     if (stackTrace == null) return null;
     final lines = stackTrace.toString().split('\n');
-    // 从第 0 行开始找业务代码（跳过 logging 内部调用）
     for (int i = 0; i < lines.length && i < 8; i++) {
-      // 跳过包内部、框架、或未知行
       if (lines[i].contains('package:logging/') ||
           lines[i].contains('dart:async/') ||
           lines[i].contains('<asynchronous suspension>') ||
@@ -49,17 +47,23 @@ class AppLogger {
     return null;
   }
 
-  // ====== Public API（支持显式 tag，不伪造 StackTrace）======
+  // ====== Public API ======
   void d(String msg, {String? tag}) => _logDirect(Level.FINE, msg, tag: tag);
   void i(String msg, {String? tag}) => _logDirect(Level.INFO, msg, tag: tag);
   void w(String msg, {String? tag}) => _logDirect(Level.WARNING, msg, tag: tag);
   void e(String msg, {Object? error, String? tag}) => _logDirect(Level.SEVERE, msg, error: error, tag: tag);
 
   void _logDirect(Level level, String message, {Object? error, String? tag}) {
+    // ⚠️ 关键修复：不再使用 log.i(...) 打印分隔线，避免递归！
+    final sep = '-' * 158;
+
     // Release 模式只输出 WARNING 及以上
     if (!kDebugMode && level != Level.WARNING && level != Level.SEVERE) {
       return;
     }
+
+    // 直接使用 debugPrint 输出分隔线
+    debugPrint(sep);
 
     final time = _formatTime(DateTime.now());
     final levelTag = _getLevelTag(level);
@@ -70,7 +74,6 @@ class AppLogger {
 
     if (error != null) {
       debugPrint('  💥 Error: $error');
-      // 仅在有 error 且 debug 模式下打印堆栈
       if (kDebugMode) {
         final stackLines = StackTrace.current.toString().split('\n').take(3);
         for (final line in stackLines) {
@@ -80,6 +83,9 @@ class AppLogger {
         }
       }
     }
+
+    // 结尾分隔线也用 debugPrint
+    debugPrint(sep);
   }
 }
 
@@ -100,7 +106,6 @@ class ChapterLogItem {
 
 /// 小说阅读器专用：美观的章节日志（无 record，兼容 Dart 2.17+）
 class ChapterLogger {
-  /// 打印带分隔框的章节日志
   static void logChapters({
     required List<ChapterLogItem> chapters,
     String? boxTitle,
@@ -127,7 +132,6 @@ class ChapterLogger {
     }
   }
 
-  /// 快捷方法：仅打印章节目录
   static void logChapterList(List<String> titles) {
     if (!kDebugMode) return;
 
