@@ -39,7 +39,20 @@ class _ReadScreenState extends State<ReadScreen> {
   void initState() {
     super.initState();
     bookController = ReadController.create(
-      loadingWidget: const Center(child: CircularProgressIndicator()),
+      // loadingWidget: const Center(child: CircularProgressIndicator()),
+      loadingWidget: const Center(
+      child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text(
+              "加载书籍中，请稍后",
+              style: TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+          ],
+        ),
+      ),
       enableVerticalDrag: true,
       enableTapPage: true,
     );
